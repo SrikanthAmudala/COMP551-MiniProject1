@@ -19,12 +19,11 @@ class model(object):
 class logistic_regression(model):
     # alpha methods
     @staticmethod
-    def _update_alpha_constant(alpha,k): 
+    def _update_alpha_constant(alpha, k): 
         return alpha
 
-    @staticmethod
-    def _update_alpha_hyperbolic(alpha,k): 
-        return alpha * (k + 1) / (k + 2)
+    def _update_alpha_hyperbolic(self,alpha,k): 
+        return alpha * (k + 1) / (self.decay * (k + 2))
 
     # different stopping criterions :
     # epoch : fixed number of iterations
@@ -43,12 +42,13 @@ class logistic_regression(model):
 
 
     def __init__(self, m, 
-                 alpha_mode = 'hyperbolic', alpha_init = 1,
+                 alpha_mode = 'hyperbolic', alpha_init = 1, decay = 1,
                  stopping_mode = 'convergence', num_epoch = 20, threshold = 1
                  ):
         # m : number of features (dimensions) of the linear model
-        self.w = np.random.randn(m)
+        self.w = np.zeros(m)
         self.alpha_init = alpha_init
+        self.decay = decay
         self.num_epoch = int(num_epoch)
         self.threshold = threshold
 
