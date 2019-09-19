@@ -25,7 +25,6 @@ def preprocessing(df,prop=0.9):
     # Divide data set and normalize data separately (no information leakage)
 
     X_train = df.to_numpy()
-    X_train = np.concatenate([np.ones((X_train.shape[0],1)),X_train],axis=1)
     np.random.shuffle(X_train)
     isep = round(prop * X_train.shape[0])
 
@@ -35,7 +34,10 @@ def preprocessing(df,prop=0.9):
     X_val   = X_train[isep:,:-1]
     X_train = X_train[:isep,:-1]
 
-    X_val   = (X_val - np.mean(X_val)) / np.std(X_val)
-    X_train = (X_train - np.mean(X_train)) / np.std(X_train)
+    X_val   = (X_val - np.mean(X_val,axis=0)) / np.std(X_val,axis=0)
+    X_train = (X_train - np.mean(X_train,axis=0)) / np.std(X_train,axis=0)
+
+    X_val = np.concatenate([np.ones((X_val.shape[0],1)),X_val],axis=1)
+    X_train = np.concatenate([np.ones((X_train.shape[0],1)),X_train],axis=1)
 
     return (X_train,y_train,X_val,y_val)
