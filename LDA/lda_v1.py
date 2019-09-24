@@ -45,7 +45,7 @@ x_mu = np.asarray([x_mu_1,x_mu_2])
 
 sigma = ((I*x_mu.transpose())/(y_train.shape[0]-2)).sum()
 
-w0 = np.log(p1/p0) - np.matmul(mean[1]/sigma,mean[1].transpose()) + np.matmul(mean[0]/sigma,mean[0].transpose())
+w0 = np.log(p1/p0) - np.matmul(mean[1]/sigma,mean[1].transpose()) + np.matmul(mean[0]/sigma,mean[0].transpose()) # 1/2 ?
 w0 = np.resize(w0,[y_val.shape[0],1])
 w = (mean[1]-mean[0])/sigma
 #w = np.resize(w,[y_val.shape[0],w.shape[0]])

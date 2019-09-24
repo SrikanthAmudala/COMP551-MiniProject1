@@ -41,3 +41,19 @@ def preprocessing(df,prop=0.9):
     X_train = np.concatenate([np.ones((X_train.shape[0],1)),X_train],axis=1)
 
     return (X_train,y_train,X_val,y_val)
+
+def preprocessing_kfold(dataset_train,dataset_val):
+    # Divide data set and normalize data separately (no information leakage)
+    y_val   = dataset_val[:,-1]
+    y_train = dataset_train[:,-1]
+
+    X_val   = dataset_val[:,:-1]
+    X_train = dataset_train[:,:-1]
+
+    X_val   = (X_val - np.mean(X_val,axis=0)) / np.std(X_val,axis=0)
+    X_train = (X_train - np.mean(X_train,axis=0)) / np.std(X_train,axis=0)
+
+    X_val = np.concatenate([np.ones((X_val.shape[0],1)),X_val],axis=1)
+    X_train = np.concatenate([np.ones((X_train.shape[0],1)),X_train],axis=1)
+
+    return (X_train,y_train,X_val,y_val)
