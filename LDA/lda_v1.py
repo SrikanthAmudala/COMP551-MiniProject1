@@ -40,6 +40,8 @@ mean = np.asarray(mean)/[[N0],[N1]]
 x_mu_1 = X_train - mean[0]
 x_mu_1 = np.diagonal(np.matmul(x_mu_1,x_mu_1.transpose()))
 x_mu_2 = X_train - mean[1]
+
+
 x_mu_2 = np.diagonal(np.matmul(x_mu_2,x_mu_2.transpose()))
 x_mu = np.asarray([x_mu_1,x_mu_2])
 
