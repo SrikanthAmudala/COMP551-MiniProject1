@@ -21,7 +21,7 @@ def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, 
     if iteration == total: 
         print()
 
-def preprocessing(df,prop=0.9):
+def preprocessing(df,prop=0.1):
     # Divide data set and normalize data separately (no information leakage)
 
     X_train = df.to_numpy()
