@@ -1,5 +1,7 @@
-# LDA
-
+"""
+@auth: Sunny
+@desc: LDA Working
+"""
 import pandas
 import utils
 import collections
@@ -65,7 +67,6 @@ for i in range(0, len(I)):
 
 
 cluster_0 = np.asarray(sum(cluster_0))
-# cluster_1 = np.asarray(cluster_1)
 cluster_1 = np.asarray(sum(cluster_1))
 
 covar = (cluster_0 + cluster_1) / (N0 + N1 - 2)
@@ -73,7 +74,6 @@ covar = (cluster_0 + cluster_1) / (N0 + N1 - 2)
 w0 = np.log(p1 / p0) - 1 / 2 * np.dot(np.dot(mean[0].reshape(-1, 1).T, np.linalg.pinv(covar)), mean[0].reshape(-1, 1))
 w = np.dot(np.linalg.pinv(covar), mean[1] - mean[0])
 
-ldb = w0 + np.dot(X_val, w)
 y_pred = ((w0 + np.dot(X_val,w))>0).astype('int64')
 
 accuracy = metrics.accuracy_score(y_val.reshape(-1,1), y_pred.reshape(-1,1))
