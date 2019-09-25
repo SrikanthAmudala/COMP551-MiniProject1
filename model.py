@@ -2,6 +2,7 @@
 import numpy as np
 import pandas as pd
 import utils
+import collections
 from matplotlib import pyplot as plt
 
 
@@ -44,11 +45,7 @@ class logistic_regression(model):
         return epoch != self.num_epoch
 
     def _stopping_condition_convergence(self, epoch, delta, **kwargs):
-        if (np.abs(delta < self.threshold)):
-            print("converged\n")
-            return False
-
-        return epoch != self.num_epoch
+        return (np.abs(delta >= self.threshold)) and (epoch != self.num_epoch)
 
     def __init__(self, m,
                  alpha_mode='hyperbolic', alpha_init=1, decay=1,
@@ -66,7 +63,7 @@ class logistic_regression(model):
         self.update_alpha = getattr(self, '_update_alpha_' + alpha_mode)
         self.stopping_condition = getattr(self, '_stopping_condition_' + stopping_mode)
 
-    def fit(self, X_train, y_train, X_val, y_val):
+    def fit(self, X_train, y_train, X_val=None, y_val=None):
         # initial step size of the gradient descent
         alpha = self.alpha_init
 
@@ -77,15 +74,10 @@ class logistic_regression(model):
         # record of the training and validation accuracy per epoch
         if self.train_metrics:
             metrics = np.zeros((self.num_epoch + 1, 2))
-        else:
-            metrics = np.zeros((1, 2))
+            metrics[epoch, :] = self.do_metrics(X_train, y_train, X_val, y_val)
+            print("epoch {} : train acc. {} val acc. {}\n".format(epoch, metrics[epoch, 0], metrics[epoch, 1]))
 
         while self.stopping_condition(epoch=epoch, delta=np.linalg.norm(delta)):
-            # metrics
-            if self.train_metrics:
-                metrics[epoch, :] = self.do_metrics(X_train, y_train, X_val, y_val)
-                print("epoch {} : train acc. {} val acc. {}\n".format(epoch, metrics[epoch, 0], metrics[epoch, 1]))
-
             epoch += 1
             dEdw = 0
             for isample in range(y_train.size):
@@ -101,55 +93,120 @@ class logistic_regression(model):
             # update step
             alpha = self.update_alpha(alpha, epoch)
 
+            # metrics
+            if self.train_metrics:
+                metrics[epoch, :] = self.do_metrics(X_train, y_train, X_val, y_val)
+                print("epoch {} : train acc. {} val acc. {}\n".format(epoch, metrics[epoch, 0], metrics[epoch, 1]))
+
         # metrics
         if self.train_metrics:
-            metrics[epoch, :] = self.do_metrics(X_train, y_train, X_val, y_val)
-            print("epoch {} : train acc. {} val acc. {}\n".format(epoch, metrics[epoch, 0], metrics[epoch, 1]))
             if epoch != self.num_epoch:
                 metrics = metrics[:epoch, :]
-        else:
-            metrics = self.do_metrics(X_train, y_train, X_val, y_val)
-            print("epoch {} : train acc. {} val acc. {}\n".format(epoch, metrics[0], metrics[1]))
-
-        return metrics
+            
+            return metrics
 
     def predict(self, X):
         return (sigma(np.dot(X, self.w)) > 0.5).astype('int64')
 
+class lda(model):
+    def __init__(self,m):
+        self.train_metrics = False
+        self.w = np.random.randn(m)
+
+    def fit(self, X_train, y_train):
+        if X_train.shape[1] == self.w.size:
+            X_train = X_train[:,1:] # remove bias term !
+
+        target_count = collections.Counter(y_train)
+        N0 = target_count.get(0.0)
+        N1 = target_count.get(1.0)
+
+        # p(y=0), p(y=1)
+        p0 = N0 / y_train.shape[0]
+        p1 = N1 / y_train.shape[0]
+
+        I = np.zeros([y_train.shape[0], 2])
+        ctr = 0
+
+        # mean
+        mean = [0,0]
+        for i, j in zip(y_train, X_train):
+            if int(i) == 0:
+                mean[0] += j
+                I[ctr, 0] = 1
+            else:
+                mean[-1] += j
+                I[ctr, 1] = 1
+            ctr += 1
+
+        mean = np.asarray(mean) / [[N0], [N1]]
+
+        # covar
+        x_mu_0 = X_train - mean[0]
+        x_mu_1 = X_train - mean[1]
+
+        cluster_0 = []
+        cluster_1 = []
+
+        for i in range(0, len(I)):
+            cluster_0.append(I[i][0] * np.dot(x_mu_0[i].reshape(-1, 1), x_mu_0[i].reshape(-1, 1).T))
+            cluster_1.append(I[i][1] * np.dot(x_mu_1[i].reshape(-1, 1), x_mu_1[i].reshape(-1, 1).T))
+
+        cluster_0 = np.asarray(sum(cluster_0))
+        cluster_1 = np.asarray(sum(cluster_1))
+
+        covar = (cluster_0 + cluster_1) / (N0 + N1 - 2)
+
+        self.w[0] = np.log(p1 / p0) - 1 / 2 * np.dot(
+            np.dot(mean[0].reshape(-1, 1).T, np.linalg.pinv(covar)),
+                   mean[0].reshape(-1, 1))
+
+        self.w[1:] = np.dot(np.linalg.pinv(covar), mean[1] - mean[0])
+
+    def predict(self, X):
+        return ((np.dot(X, self.w)) > 0).astype('int64')
 
 ## Package
-def kfold(model_init, df, k=5, plot=False, **params):
+def kfold(model_init, df, k=5, **params):
     # init
     dataset = df.to_numpy()
     np.random.shuffle(dataset)
-    if params['train_metrics']:
-        metrics = np.zeros((params['num_epoch'] + 1, 2))
+    mymodel = model_init(dataset.shape[1], **params) # remove 1 for target but add 1 for bias
+
+    # metrics
+    if mymodel.train_metrics:
+        metrics = np.zeros((mymodel.num_epoch + 1, 2))
+        # compute baseline for plot
+        counts = df.iloc[:, -1].value_counts().sort_values(ascending=False)
+        baseline = counts.iloc[0] / (counts.iloc[0] + counts.iloc[1])
     else:
         metrics = np.zeros((1, 2))
 
-    # compute baseline for plot
-    if params['train_metrics']:
-        counts = df.iloc[:, -1].value_counts().sort_values(ascending=False)
-        baseline = counts.iloc[0] / (counts.iloc[0] + counts.iloc[1])
-
+    # kfold loop
     folds = np.array_split(dataset, k, axis=0)
     for i in range(k):
         dataset_val = folds[i]
         dataset_train = np.vstack(folds[:i] + folds[i + 1:])
-
         (X_train, y_train, X_val, y_val) = utils.preprocessing_kfold(dataset_train, dataset_val)
-        mymodel = model_init(X_train.shape[1], **params)
-        metrics += mymodel.fit(X_train, y_train, X_val, y_val)
+        
+        # metrics
+        if mymodel.train_metrics:
+            metrics += mymodel.fit(X_train, y_train, X_val, y_val)
+        else:
+            mymodel.fit(X_train, y_train)
+            metrics += mymodel.do_metrics(X_train,y_train,X_val,y_val)
 
     metrics /= k
+    
     # plot metrics
-    if params['train_metrics']:
+    if mymodel.train_metrics:
         plt.figure()
         plt.plot(metrics, '.-')
-        plt.plot(np.array([0, metrics.shape[0]]), baseline * np.ones(2), '-r')
+        plt.plot(np.array([0, metrics.shape[0]-1]), baseline * np.ones(2), '-r')
         plt.xlabel('epochs')
         plt.ylabel('metrics')
         plt.legend(['train acc.', 'val. acc.', 'baseline'])
+        plt.grid()
         plt.show()
 
     return metrics[-1, :]
