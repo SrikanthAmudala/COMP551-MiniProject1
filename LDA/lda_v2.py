@@ -10,6 +10,8 @@ from sklearn import metrics
 from sklearn.model_selection import train_test_split
 
 df = pandas.read_csv("/Users/Srikanth/PycharmProjects/MiniProject1/breastcancer/clean_breastcancer.csv")
+
+
 df = df.drop(['Sample code number'], axis=1)
 
 # X = df.iloc[:, 0:-2]
