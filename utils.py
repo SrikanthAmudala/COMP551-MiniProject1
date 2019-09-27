@@ -60,3 +60,21 @@ def preprocessing_kfold(dataset_train, dataset_val):
     X_train = np.concatenate([np.ones((X_train.shape[0], 1)), X_train], axis=1)
 
     return (X_train, y_train, X_val, y_val)
+
+def augment_square(df):
+    dataset = df.copy()
+    columns = dataset.columns[:-1]
+    index = len(columns)
+    for column in columns[::-1]:
+        dataset.insert(index,column + '^2',np.square(dataset[column]))
+    return dataset
+
+def augment_interact(df):
+    dataset = df.copy()
+    columns = dataset.columns[-2::-1]
+    index = len(columns)
+    for i in range(len(columns)):
+        for j in range(i+1):
+            dataset.insert(index,columns[i] + '*' + columns[j],dataset[[columns[i],columns[j]]].product(axis=1))
+    
+    return dataset
