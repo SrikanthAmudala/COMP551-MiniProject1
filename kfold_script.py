@@ -13,7 +13,7 @@ important_feature = important_feature[important_feature != 0] - 1
 
 # params kfold
 k = 5
-path = 'winequality/clean_redwine.csv'
+path = 'winequality/redwine.csv'
 # path = 'breastcancer/clean_breastcancer.csv'
 num_epoch_list = [500]
 alpha_init_list = np.array([0.005])#np.linspace(0.005,0.05,11)
@@ -30,7 +30,7 @@ lam = 10
 
 df = pd.read_csv(path,index_col=0)
 # df = utils.augment_square(df)
-df = utils.augment_interact(df).iloc[:,np.append(important_feature[:8],-1)]
+df = utils.augment_interact(df).iloc[:,np.append(important_feature[:20],-1)]
 
 param_list = []
 metric_list = []
