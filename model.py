@@ -2,7 +2,6 @@
 import numpy as np
 import pandas as pd
 import utils
-import collections
 from matplotlib import pyplot as plt
 
 
@@ -36,7 +35,10 @@ class logistic_regression(model):
         return alpha
 
     def _update_alpha_hyperbolic(self, alpha, k):
-        return alpha * (k + 1) / (self.decay * (k + 2))
+        return alpha * (k) / (self.decay * (k + self.beta))
+
+    def _update_alpha_mixed(self,alpha,k):
+        return alpha / 10 if np.abs(np.log10(1/alpha) - 2 - k/100) < 1e-9 else alpha
 
     # different stopping criterions :
     # epoch : fixed number of iterations
@@ -47,21 +49,34 @@ class logistic_regression(model):
     def _stopping_condition_convergence(self, epoch, delta, **kwargs):
         return (np.abs(delta >= self.threshold)) and (epoch != self.num_epoch)
 
+    def _regularization_none(self):
+        return 0
+    
+    def _regularization_l2(self):
+        return (- self.lam * self.w)
+
+    def _regularization_l1(self):
+        return (- self.lam * np.sign(self.w))
+
     def __init__(self, m,
-                 alpha_mode='hyperbolic', alpha_init=1, decay=1,
+                 alpha_mode='hyperbolic', alpha_init=1, decay=1, beta = 1,
                  stopping_mode='convergence', num_epoch=20, threshold=1,
-                 train_metrics=False
+                 train_metrics=False,
+                 regularization_mode='none', lam = 0.1
                  ):
         # m : number of features (dimensions) of the linear model
-        self.w = np.random.randn(m)
+        self.w = np.zeros(m)
         self.alpha_init = alpha_init
         self.decay = decay
+        self.beta = beta
         self.num_epoch = int(num_epoch)
         self.threshold = threshold
         self.train_metrics = train_metrics
+        self.lam = lam
 
         self.update_alpha = getattr(self, '_update_alpha_' + alpha_mode)
         self.stopping_condition = getattr(self, '_stopping_condition_' + stopping_mode)
+        self.regularization = getattr(self,'_regularization_' + regularization_mode)
 
     def fit(self, X_train, y_train, X_val=None, y_val=None):
         # initial step size of the gradient descent
@@ -87,7 +102,7 @@ class logistic_regression(model):
                 dEdw += x_i * (y_i - sigma(a))
 
             # gradient descent step
-            delta = alpha * dEdw
+            delta = alpha * (dEdw + self.regularization())
             self.w += delta
 
             # update step
@@ -101,7 +116,8 @@ class logistic_regression(model):
         # metrics
         if self.train_metrics:
             if epoch != self.num_epoch:
-                metrics = metrics[:epoch, :]
+                metrics[epoch:, 0].fill(metrics[epoch-1,0])
+                metrics[epoch:, 1].fill(metrics[epoch-1,1])
             
             return metrics
 
@@ -111,57 +127,34 @@ class logistic_regression(model):
 class lda(model):
     def __init__(self,m):
         self.train_metrics = False
-        self.w = np.random.randn(m)
+        self.w = np.zeros(m)
 
     def fit(self, X_train, y_train):
         if X_train.shape[1] == self.w.size:
             X_train = X_train[:,1:] # remove bias term !
 
-        target_count = collections.Counter(y_train)
-        N0 = target_count.get(0.0)
-        N1 = target_count.get(1.0)
+        N0 = y_train[y_train == 0].size
+        N1 = y_train[y_train == 1].size
 
         # p(y=0), p(y=1)
         p0 = N0 / y_train.shape[0]
         p1 = N1 / y_train.shape[0]
 
-        I = np.zeros([y_train.shape[0], 2])
-        ctr = 0
+        X_train_0 = X_train[y_train == 0]
+        X_train_1 = X_train[y_train == 1]
 
-        # mean
-        mean = [0,0]
-        for i, j in zip(y_train, X_train):
-            if int(i) == 0:
-                mean[0] += j
-                I[ctr, 0] = 1
-            else:
-                mean[-1] += j
-                I[ctr, 1] = 1
-            ctr += 1
-
-        mean = np.asarray(mean) / [[N0], [N1]]
+        mean = [np.mean(X_train_0,axis=0),
+                np.mean(X_train_1,axis=0)]
 
         # covar
-        x_mu_0 = X_train - mean[0]
-        x_mu_1 = X_train - mean[1]
+        x_mu_0 = X_train_0 - mean[0]
+        x_mu_1 = X_train_1 - mean[1]
+        covar = (x_mu_0.T @ x_mu_0  + x_mu_1.T @ x_mu_1) / (N0 + N1 - 2)
+        invcovar = np.linalg.inv(covar)
 
-        cluster_0 = []
-        cluster_1 = []
+        self.w[0] = np.log(p1 / p0) + 0.5 * ((mean[0] @ (invcovar @ mean[0])) - (mean[1] @ (invcovar @ mean[1]))) 
 
-        for i in range(0, len(I)):
-            cluster_0.append(I[i][0] * np.dot(x_mu_0[i].reshape(-1, 1), x_mu_0[i].reshape(-1, 1).T))
-            cluster_1.append(I[i][1] * np.dot(x_mu_1[i].reshape(-1, 1), x_mu_1[i].reshape(-1, 1).T))
-
-        cluster_0 = np.asarray(sum(cluster_0))
-        cluster_1 = np.asarray(sum(cluster_1))
-
-        covar = (cluster_0 + cluster_1) / (N0 + N1 - 2)
-
-        self.w[0] = np.log(p1 / p0) - 1 / 2 * np.dot(
-            np.dot(mean[0].reshape(-1, 1).T, np.linalg.pinv(covar)),
-                   mean[0].reshape(-1, 1))
-
-        self.w[1:] = np.dot(np.linalg.pinv(covar), mean[1] - mean[0])
+        self.w[1:] = invcovar @ (mean[1] - mean[0])
 
     def predict(self, X):
         return ((np.dot(X, self.w)) > 0).astype('int64')
@@ -209,8 +202,7 @@ def kfold(model_init, df, k=5, **params):
         plt.grid()
         plt.show()
 
-    return metrics[-1, :]
-
+    return (metrics[-1, :],mymodel.w)
 
 # sigmoid function
 def sigma(x):
