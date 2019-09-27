@@ -47,10 +47,16 @@ The models used in this project will be trained to achieve a binary classificati
 % preview image
 The ``quality'' target ranges from 0 to 10. The thresholding operation described in \eqref{thresholding} maps the multiclass target to a binary value. The class ``1'' will be further referenced as the ``good'' wine class and similarly the other as ``bad''.
 \begin{align}
-	y_{\text{binary}} = y_{\text{multiclass}} > 5
+	y_{\text{binary}} = y_{\text{multiclass}} > 5\label{thresholding}
 \end{align}
-The histograms specific to each feature, separated by class (Fig. \ref{redwine_hist}) allows to perform a first analysis.
-
+The histograms specific to each feature, separated by class (Fig. \ref{fig:redwine_hist}) allows to perform a first analysis.
+\begin{figure}[!b]
+    \centering
+    \includegraphics[width=8cm]{Task_1/hist.png}
+    \caption{Redwine histograms by feature and class}
+    \label{fig:redwine_hist}
+\end{figure}
+We already perceive some features allow an easy discrimination between the two classes : 
 
 
 

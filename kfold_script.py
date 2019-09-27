@@ -13,7 +13,7 @@ important_feature = important_feature[important_feature != 0] - 1
 
 # params kfold
 k = 5
-path = 'winequality/redwine.csv'
+path = 'winequality/clean_redwine.csv'
 # path = 'breastcancer/clean_breastcancer.csv'
 num_epoch_list = [500]
 alpha_init_list = np.array([0.005])#np.linspace(0.005,0.05,11)
