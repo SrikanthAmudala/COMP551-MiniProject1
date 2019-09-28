@@ -1,32 +1,14 @@
 import numpy as np
-import pandas as pd
 
-
-def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█'):
-    """
-    Call in a loop to create terminal progress bar
-    @params:
-        iteration   - Required  : current iteration (Int)
-        total       - Required  : total iterations (Int)
-        prefix      - Optional  : prefix string (Str)
-        suffix      - Optional  : suffix string (Str)
-        decimals    - Optional  : positive number of decimals in percent complete (Int)
-        length      - Optional  : character length of bar (Int)
-        fill        - Optional  : bar fill character (Str)
-    """
-    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
-    filledLength = int(length * iteration // total)
-    bar = fill * filledLength + '-' * (length - filledLength)
-    print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end='\r')
-    # Print New Line on Complete
-    if iteration == total:
-        print()
-
+"""
+This package regroups methods to apply on the dataset before learning
+"""
 
 def preprocessing(df, prop=0.8):
-    # Divide data set and normalize data separately (no information leakage)
-
+    # Convert the dataframe to numpy array
     X_train = df.to_numpy()
+    
+    # Divide data set and normalize data separately (no information leakage)
     np.random.shuffle(X_train)
     isep = round(prop * X_train.shape[0])
 
@@ -39,11 +21,11 @@ def preprocessing(df, prop=0.8):
     X_val = (X_val - np.mean(X_val, axis=0)) / np.std(X_val, axis=0)
     X_train = (X_train - np.mean(X_train, axis=0)) / np.std(X_train, axis=0)
 
+    # Add bias term
     X_val = np.concatenate([np.ones((X_val.shape[0], 1)), X_val], axis=1)
     X_train = np.concatenate([np.ones((X_train.shape[0], 1)), X_train], axis=1)
 
     return (X_train, y_train, X_val, y_val)
-
 
 def preprocessing_kfold(dataset_train, dataset_val):
     # Divide data set and normalize data separately (no information leakage)
@@ -56,6 +38,7 @@ def preprocessing_kfold(dataset_train, dataset_val):
     X_val = (X_val - np.mean(X_val, axis=0)) / np.std(X_val, axis=0)
     X_train = (X_train - np.mean(X_train, axis=0)) / np.std(X_train, axis=0)
 
+    # Add bias term
     X_val = np.concatenate([np.ones((X_val.shape[0], 1)), X_val], axis=1)
     X_train = np.concatenate([np.ones((X_train.shape[0], 1)), X_train], axis=1)
 
@@ -70,6 +53,7 @@ def augment_square(df):
     return dataset
 
 def augment_interact(df):
+    # Add all cross product and squares of features 
     dataset = df.copy()
     columns = dataset.columns[-2::-1]
     index = len(columns)

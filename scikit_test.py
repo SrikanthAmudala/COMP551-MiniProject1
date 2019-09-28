@@ -1,8 +1,11 @@
-import numpy as np
 import pandas as pd
 import utils
 from sklearn.linear_model import LogisticRegression
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+
+"""
+Compare our implementation to existing methods
+"""
 
 path = 'winequality/clean_redwine.csv'
 df = pd.read_csv(path,index_col=0)

@@ -7,7 +7,6 @@ import model
 from matplotlib import pyplot as plt
 
 # params
-
 num_epoch = 400
 alpha_init = 1e-2
 threshold = 1e-3
@@ -16,13 +15,17 @@ alpha_mode = 'hyperbolic'
 train_metrics = True
 stopping_mode = 'convergence'
 
+# import dataset redwine
 clean_redwine = pd.read_csv('winequality/clean_redwine.csv',index_col=0)
 
+# compute baseline
 counts = clean_redwine['quality'].value_counts().sort_values(ascending = False)
 baseline = counts.iloc[0]/(counts.iloc[0] + counts.iloc[1])
 
+# preprocessing
 (X_train,y_train,X_val,y_val) = utils.preprocessing(clean_redwine,prop=0.8)
 
+# training
 mymodel = model.logistic_regression(X_train.shape[1], 
                                     num_epoch = num_epoch, 
                                     alpha_init = alpha_init, 
@@ -44,13 +47,17 @@ if train_metrics:
     plt.legend(['train acc.','val. acc.','baseline'])
     plt.show()
 
+# import dataset cancer
 clean_breastcancer = pd.read_csv('breastcancer/clean_breastcancer.csv',index_col=0)
 
+# compute baseline
 counts = clean_breastcancer['Class'].value_counts().sort_values(ascending = False)
 baseline = counts.iloc[0]/(counts.iloc[0] + counts.iloc[1])
 
+# preprocessing
 (X_train,y_train,X_val,y_val) = utils.preprocessing(clean_breastcancer,prop=0.8)
 
+# training
 mymodel2 = model.logistic_regression(X_train.shape[1], 
                                     num_epoch = num_epoch, 
                                     alpha_init = alpha_init, 

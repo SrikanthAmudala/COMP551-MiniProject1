@@ -1,13 +1,19 @@
-# Models for Miniproject 1
 import numpy as np
-import pandas as pd
 import utils
 from matplotlib import pyplot as plt
-
+"""
+This package regroups all linear models and validation methods used for MiniProject1
+More precisely : Logistic Regression, LDA and kfold cross validation
+"""
 
 class model(object):
-    def __init__(self):
-        pass
+    """
+    Abstract class to define common methods to both Logistic Regression and LDA
+    """
+    def __init__(self,m):
+        self.train_metrics = False
+        # m : number of features (dimensions) of the linear model
+        self.w = np.zeros(m)
 
     def fit(self, X, y):
         pass
@@ -20,6 +26,7 @@ class model(object):
         return sum(y_pred == y_true) / y_true.size  # in [0,1]
 
     def do_metrics(self, X_train, y_train, X_val, y_val):
+        # Return accuracy on the training and validation set
         y_pred_train = self.predict(X_train)
         y_pred_val = self.predict(X_val)
         return [self.evaluate_acc(y_pred=y_pred_train,
@@ -27,9 +34,11 @@ class model(object):
                 self.evaluate_acc(y_pred=y_pred_val,
                                   y_true=y_val)]
 
-
 class logistic_regression(model):
-    # alpha methods
+    # different gradient descent update step methods
+    # constant : fixed alpha
+    # hyperbolic : hyperbolic function that decreases over epochs
+    # mixed : step-like decreasing function
     @staticmethod
     def _update_alpha_constant(alpha, k):
         return alpha
@@ -42,13 +51,17 @@ class logistic_regression(model):
 
     # different stopping criterions :
     # epoch : fixed number of iterations
-    # convergence : detect convergence, if not default epoch max number
+    # convergence : detect convergence of the l2-norm of w, if not : default epoch max number
     def _stopping_condition_epoch(self, epoch, **kwargs):
         return epoch != self.num_epoch
 
     def _stopping_condition_convergence(self, epoch, delta, **kwargs):
         return (np.abs(delta >= self.threshold)) and (epoch != self.num_epoch)
 
+    # different regularization methods :
+    # none : no regularization term
+    # l1 : l1 norm regularization
+    # l2 : l2 norm regularization
     def _regularization_none(self):
         return 0
     
@@ -59,21 +72,26 @@ class logistic_regression(model):
         return (- self.lam * np.sign(self.w))
 
     def __init__(self, m,
-                 alpha_mode='hyperbolic', alpha_init=1, decay=1, beta = 1,
-                 stopping_mode='convergence', num_epoch=20, threshold=1,
+                 alpha_mode='hyperbolic', alpha_init=0.005, decay=1, beta = 0.8,
+                 stopping_mode='convergence', num_epoch=50, threshold=1e-4,
                  train_metrics=False,
-                 regularization_mode='none', lam = 0.1
+                 regularization_mode='none', lam = 10
                  ):
-        # m : number of features (dimensions) of the linear model
-        self.w = np.zeros(m)
+        super().__init__(m)
+        # alpha params
         self.alpha_init = alpha_init
         self.decay = decay
         self.beta = beta
+        # maximum number of epochs
         self.num_epoch = int(num_epoch)
+        # threshold on w for early stopping
         self.threshold = threshold
+        # return train and val accuracy for every epoch
         self.train_metrics = train_metrics
+        # regularization factor
         self.lam = lam
 
+        # select adequate update, stopping and regularization methods
         self.update_alpha = getattr(self, '_update_alpha_' + alpha_mode)
         self.stopping_condition = getattr(self, '_stopping_condition_' + stopping_mode)
         self.regularization = getattr(self,'_regularization_' + regularization_mode)
@@ -94,6 +112,7 @@ class logistic_regression(model):
 
         while self.stopping_condition(epoch=epoch, delta=np.linalg.norm(delta)):
             epoch += 1
+            # compute gradient
             dEdw = 0
             for isample in range(y_train.size):
                 x_i = X_train[isample]
@@ -105,7 +124,7 @@ class logistic_regression(model):
             delta = alpha * (dEdw + self.regularization())
             self.w += delta
 
-            # update step
+            # update step size
             alpha = self.update_alpha(alpha, epoch)
 
             # metrics
@@ -125,10 +144,6 @@ class logistic_regression(model):
         return (sigma(np.dot(X, self.w)) > 0.5).astype('int64')
 
 class lda(model):
-    def __init__(self,m):
-        self.train_metrics = False
-        self.w = np.zeros(m)
-
     def fit(self, X_train, y_train):
         if X_train.shape[1] == self.w.size:
             X_train = X_train[:,1:] # remove bias term !
@@ -142,7 +157,8 @@ class lda(model):
 
         X_train_0 = X_train[y_train == 0]
         X_train_1 = X_train[y_train == 1]
-
+        
+        # mu_0 and mu_1
         mean = [np.mean(X_train_0,axis=0),
                 np.mean(X_train_1,axis=0)]
 
@@ -164,7 +180,7 @@ def kfold(model_init, df, k=5, **params):
     # init
     dataset = df.to_numpy()
     np.random.shuffle(dataset)
-    mymodel = model_init(dataset.shape[1], **params) # remove 1 for target but add 1 for bias
+    mymodel = model_init(dataset.shape[1], **params) # size : remove 1 for target but add 1 for bias
 
     # metrics
     if mymodel.train_metrics:
